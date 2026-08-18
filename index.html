@@ -1,18 +1,12 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
 
     <meta
         name="viewport"
-        content="
-            width=device-width,
-            initial-scale=1.0,
-            maximum-scale=1.0,
-            user-scalable=no,
-            viewport-fit=cover
-        "
-    >
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
 
     <title>Wilderness Fishing</title>
 
@@ -27,14 +21,10 @@
         body {
             position: fixed;
             inset: 0;
-
             width: 100%;
             height: 100%;
-
             overflow: hidden;
-
             background: #000;
-
             touch-action: none;
             overscroll-behavior: none;
         }
@@ -42,324 +32,200 @@
         body {
             user-select: none;
             -webkit-user-select: none;
+            font-family: Arial, sans-serif;
         }
 
-
         /* ========================================================
-           Viewport
+           Full Screen Blurred Backdrop
         ======================================================== */
-
-        #viewport {
+        #backdropCanvas {
             position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
 
-            left: 0;
-            top: 0;
+            filter:
+                brightness(0.42)
+                blur(4px);
 
-            width: 100dvw;
-            height: 100dvh;
-
-            overflow: hidden;
+            transform: scale(1.06);
+            transform-origin: center center;
 
             background: #000;
         }
 
+        /* ========================================================
+           Outside Dark Masks
+        ======================================================== */
+        .mask {
+            position: fixed;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        #maskTop,
+        #maskBottom {
+            background: rgba(0, 0, 0, 0.48);
+        }
+
+        #maskLeft {
+            background: linear-gradient(
+                to right,
+                rgba(0, 0, 0, 0.72),
+                rgba(0, 0, 0, 0.52)
+            );
+        }
+
+        #maskRight {
+            background: linear-gradient(
+                to left,
+                rgba(0, 0, 0, 0.72),
+                rgba(0, 0, 0, 0.52)
+            );
+        }
 
         /* ========================================================
-           Game Container
+           Main 16:9 Game Area
         ======================================================== */
-
         #gameContainer {
-            position: absolute;
-
+            position: fixed;
             left: 50%;
             top: 50%;
-
             width: 1280px;
             height: 720px;
-
-            transform:
-                translate(-50%, -50%);
-
-            transform-origin:
-                center center;
-
+            transform: translate(-50%, -50%);
+            transform-origin: center center;
+            z-index: 10;
             overflow: hidden;
-
             background: #000;
+            box-shadow:
+                0 0 0 1px rgba(255, 255, 255, 0.04),
+                0 16px 48px rgba(0, 0, 0, 0.45);
         }
-
-
-        /* ========================================================
-           Canvas
-        ======================================================== */
 
         #gameCanvas {
             display: block;
-
             width: 100%;
             height: 100%;
-
             background: #000;
         }
 
-
         /* ========================================================
-           Loading
+           UI
         ======================================================== */
-
         #loading {
             position: fixed;
-
             left: 50%;
             top: 50%;
-
-            transform:
-                translate(-50%, -50%);
-
+            transform: translate(-50%, -50%);
             color: #fff;
-
-            font-family:
-                Arial,
-                sans-serif;
-
             font-size: 18px;
-
-            z-index: 5000;
-
+            z-index: 10000;
             pointer-events: none;
         }
-
-
-        /* ========================================================
-           Debug
-        ======================================================== */
 
         #debug {
             position: fixed;
-
-            left:
-                max(
-                    12px,
-                    env(safe-area-inset-left)
-                );
-
-            top:
-                max(
-                    12px,
-                    env(safe-area-inset-top)
-                );
-
+            left: max(12px, env(safe-area-inset-left));
+            top: max(12px, env(safe-area-inset-top));
             padding: 8px 12px;
-
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.55);
             color: #fff;
-
-            background:
-                rgba(
-                    0,
-                    0,
-                    0,
-                    0.55
-                );
-
-            border-radius: 5px;
-
             font-family: monospace;
             font-size: 14px;
-
             line-height: 1.5;
-
+            z-index: 10001;
             pointer-events: none;
-
-            z-index: 9999;
         }
-
-
-        /* ========================================================
-           Rotate Button
-        ======================================================== */
 
         #rotateButton {
             position: fixed;
-
-            right:
-                max(
-                    16px,
-                    env(safe-area-inset-right)
-                );
-
-            top:
-                max(
-                    16px,
-                    env(safe-area-inset-top)
-                );
-
-            padding: 12px 20px;
-
+            right: max(16px, env(safe-area-inset-right));
+            top: max(16px, env(safe-area-inset-top));
             min-width: 108px;
-
+            padding: 12px 20px;
             border: 0;
-
             border-radius: 10px;
-
-            background:
-                rgba(
-                    20,
-                    20,
-                    20,
-                    0.88
-                );
-
+            background: rgba(20, 20, 20, 0.88);
             color: #fff;
-
-            font-family:
-                Arial,
-                sans-serif;
-
             font-size: 15px;
             font-weight: 700;
-
             letter-spacing: 1px;
-
             cursor: pointer;
-
-            z-index: 10000;
-
-            -webkit-tap-highlight-color:
-                transparent;
+            z-index: 10002;
+            -webkit-tap-highlight-color: transparent;
         }
 
         #rotateButton:active {
-            transform:
-                scale(0.95);
+            transform: scale(0.96);
         }
-
     </style>
 </head>
 
-
 <body>
 
-    <div id="viewport">
+    <canvas id="backdropCanvas"></canvas>
 
-        <div id="gameContainer">
+    <div id="maskTop" class="mask"></div>
+    <div id="maskBottom" class="mask"></div>
+    <div id="maskLeft" class="mask"></div>
+    <div id="maskRight" class="mask"></div>
 
-            <canvas
-                id="gameCanvas"
-                width="1280"
-                height="720"
-            ></canvas>
-
-        </div>
-
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1280" height="720"></canvas>
     </div>
 
+    <div id="loading">Loading...</div>
 
-    <div id="loading">
-        Loading...
-    </div>
+    <div id="debug">Loading...</div>
 
-
-    <div id="debug">
-        Loading...
-    </div>
-
-
-    <button
-        id="rotateButton"
-        type="button"
-    >
-        ROTATE
-    </button>
-
+    <button id="rotateButton" type="button">ROTATE</button>
 
     <script>
-
         // ========================================================
-        // Resolution
+        // Base Resolution
         // ========================================================
 
         const GAME_WIDTH = 1280;
         const GAME_HEIGHT = 720;
-
-        const GAME_ASPECT =
-            GAME_WIDTH /
-            GAME_HEIGHT;
-
+        const GAME_ASPECT = GAME_WIDTH / GAME_HEIGHT;
 
         // ========================================================
         // Timeline
+        // 0:00 ~ 2:00  BG01 scroll
+        // 2:00 ~ 4:00  BG02 hold
+        // 4:00         fade out -> reset -> fade in
         // ========================================================
-
-        /*
-            00:00 - 02:00
-            BG01 -> BG02
-
-            02:00 - 04:00
-            BG02 固定
-
-            04:00
-            Fade Out
-
-            全黑
-            ->
-            BG01
-            ->
-            Fade In
-        */
 
         const SCROLL_DURATION = 120;
         const HOLD_DURATION = 120;
-
-        const MAIN_DURATION =
-            SCROLL_DURATION +
-            HOLD_DURATION;
-
+        const MAIN_DURATION = SCROLL_DURATION + HOLD_DURATION;
         const FADE_DURATION = 1.5;
-
 
         // ========================================================
         // DOM
         // ========================================================
 
-        const viewport =
-            document.getElementById(
-                "viewport"
-            );
+        const gameContainer = document.getElementById("gameContainer");
+        const gameCanvas = document.getElementById("gameCanvas");
+        const gameCtx = gameCanvas.getContext("2d");
 
-        const gameContainer =
-            document.getElementById(
-                "gameContainer"
-            );
+        const backdropCanvas = document.getElementById("backdropCanvas");
+        const backdropCtx = backdropCanvas.getContext("2d");
 
-        const canvas =
-            document.getElementById(
-                "gameCanvas"
-            );
+        const maskTop = document.getElementById("maskTop");
+        const maskBottom = document.getElementById("maskBottom");
+        const maskLeft = document.getElementById("maskLeft");
+        const maskRight = document.getElementById("maskRight");
 
-        const ctx =
-            canvas.getContext(
-                "2d"
-            );
+        const loadingElement = document.getElementById("loading");
+        const debugElement = document.getElementById("debug");
+        const rotateButton = document.getElementById("rotateButton");
 
-        const loadingElement =
-            document.getElementById(
-                "loading"
-            );
-
-        const debugElement =
-            document.getElementById(
-                "debug"
-            );
-
-        const rotateButton =
-            document.getElementById(
-                "rotateButton"
-            );
-
-
-        ctx.imageSmoothingEnabled =
-            true;
-
+        gameCtx.imageSmoothingEnabled = true;
+        backdropCtx.imageSmoothingEnabled = true;
 
         // ========================================================
         // Assets
@@ -368,1129 +234,459 @@
         const BG01 = new Image();
         const BG02 = new Image();
 
-        BG01.src =
-            "./assets/BG01.png";
-
-        BG02.src =
-            "./assets/BG02.png";
-
+        BG01.src = "./assets/BG01.png";
+        BG02.src = "./assets/BG02.png";
 
         // ========================================================
-        // Game State
+        // State
         // ========================================================
 
         const game = {
-
             ready: false,
-
             lastTimestamp: 0,
-
             elapsed: 0,
-
-            state:
-                "playing",
-
+            state: "playing",
             fadeAlpha: 0
-
         };
-
-
-        // ========================================================
-        // Scene
-        // ========================================================
 
         const scene = {
-
             x: 0
-
         };
-
-
-        // ========================================================
-        // Display
-        // ========================================================
 
         const display = {
-
             rotated: false,
-
-            scale: 1
-
+            layout: {
+                viewportWidth: 0,
+                viewportHeight: 0,
+                displayWidth: 0,
+                displayHeight: 0,
+                screenBoxWidth: 0,
+                screenBoxHeight: 0,
+                left: 0,
+                top: 0
+            }
         };
 
+        // ========================================================
+        // Helpers
+        // ========================================================
 
-        // ========================================================
-        // Device Detection
-        // ========================================================
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function lerp(start, end, t) {
+            return start + (end - start) * t;
+        }
 
         function isMobileDevice() {
-
             return (
-
-                window.matchMedia(
-                    "(pointer: coarse)"
-                ).matches
-
-                ||
-
-                /Android|iPhone|iPad|iPod/i
-                    .test(
-                        navigator.userAgent
-                    )
-
+                window.matchMedia("(pointer: coarse)").matches ||
+                /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
             );
-
         }
 
+        function getViewportSize() {
+            if (window.visualViewport) {
+                return {
+                    width: window.visualViewport.width,
+                    height: window.visualViewport.height
+                };
+            }
 
-        // ========================================================
-        // Image Loader
-        // ========================================================
+            return {
+                width: window.innerWidth,
+                height: window.innerHeight
+            };
+        }
 
-        function loadImage(
-            image
-        ) {
-
-            return new Promise(
-                (
-                    resolve,
-                    reject
-                ) => {
-
-                    if (
-                        image.complete &&
-                        image.naturalWidth > 0
-                    ) {
-
-                        resolve(image);
-
-                        return;
-
-                    }
-
-
-                    image.onload =
-                        () => resolve(
-                            image
-                        );
-
-
-                    image.onerror =
-                        () => reject(
-
-                            new Error(
-
-                                "Failed to load " +
-                                image.src
-
-                            )
-
-                        );
-
+        function loadImage(image) {
+            return new Promise((resolve, reject) => {
+                if (image.complete && image.naturalWidth > 0) {
+                    resolve(image);
+                    return;
                 }
-            );
 
+                image.onload = () => resolve(image);
+                image.onerror = () =>
+                    reject(new Error("Failed to load " + image.src));
+            });
         }
-
 
         async function loadAssets() {
-
             try {
-
                 await Promise.all([
-
-                    loadImage(
-                        BG01
-                    ),
-
-                    loadImage(
-                        BG02
-                    )
-
+                    loadImage(BG01),
+                    loadImage(BG02)
                 ]);
 
-
-                game.ready =
-                    true;
-
-
-                loadingElement.style.display =
-                    "none";
-
+                game.ready = true;
+                loadingElement.style.display = "none";
+            } catch (error) {
+                console.error(error);
+                loadingElement.textContent = "Failed to load assets.";
             }
-
-            catch (
-                error
-            ) {
-
-                console.error(
-                    error
-                );
-
-
-                loadingElement.textContent =
-                    "Failed to load assets.";
-
-            }
-
         }
-
 
         // ========================================================
-        // Utils
+        // Resize Canvases
         // ========================================================
 
-        function clamp(
-            value,
-            min,
-            max
-        ) {
+        function resizeBackdropCanvas(viewportWidth, viewportHeight) {
+            const dpr = window.devicePixelRatio || 1;
 
-            return Math.max(
+            backdropCanvas.width = Math.max(1, Math.round(viewportWidth * dpr));
+            backdropCanvas.height = Math.max(1, Math.round(viewportHeight * dpr));
 
-                min,
+            backdropCanvas.style.width = viewportWidth + "px";
+            backdropCanvas.style.height = viewportHeight + "px";
 
-                Math.min(
-                    max,
-                    value
-                )
-
-            );
-
+            backdropCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
         }
 
+        function updateMasks(layout) {
+            const {
+                viewportWidth,
+                viewportHeight,
+                left,
+                top,
+                screenBoxWidth,
+                screenBoxHeight
+            } = layout;
 
-        function lerp(
-            start,
-            end,
-            t
-        ) {
+            const right = left + screenBoxWidth;
+            const bottom = top + screenBoxHeight;
 
-            return (
+            // Top
+            maskTop.style.left = "0px";
+            maskTop.style.top = "0px";
+            maskTop.style.width = viewportWidth + "px";
+            maskTop.style.height = Math.max(0, top) + "px";
 
-                start +
+            // Bottom
+            maskBottom.style.left = "0px";
+            maskBottom.style.top = bottom + "px";
+            maskBottom.style.width = viewportWidth + "px";
+            maskBottom.style.height = Math.max(0, viewportHeight - bottom) + "px";
 
-                (
-                    end -
-                    start
-                ) *
+            // Left
+            maskLeft.style.left = "0px";
+            maskLeft.style.top = top + "px";
+            maskLeft.style.width = Math.max(0, left) + "px";
+            maskLeft.style.height = Math.max(0, screenBoxHeight) + "px";
 
-                t
-
-            );
-
+            // Right
+            maskRight.style.left = right + "px";
+            maskRight.style.top = top + "px";
+            maskRight.style.width = Math.max(0, viewportWidth - right) + "px";
+            maskRight.style.height = Math.max(0, screenBoxHeight) + "px";
         }
 
+        function resizeGame() {
+            const { width: viewportWidth, height: viewportHeight } = getViewportSize();
+
+            let availableWidth;
+            let availableHeight;
+
+            if (!display.rotated) {
+                availableWidth = viewportWidth;
+                availableHeight = viewportHeight;
+            } else {
+                availableWidth = viewportHeight;
+                availableHeight = viewportWidth;
+            }
+
+            const scale = Math.min(
+                availableWidth / GAME_WIDTH,
+                availableHeight / GAME_HEIGHT
+            );
+
+            const displayWidth = GAME_WIDTH * scale;
+            const displayHeight = GAME_HEIGHT * scale;
+
+            gameContainer.style.width = displayWidth + "px";
+            gameContainer.style.height = displayHeight + "px";
+
+            if (display.rotated) {
+                gameContainer.style.transform =
+                    "translate(-50%, -50%) rotate(90deg)";
+            } else {
+                gameContainer.style.transform =
+                    "translate(-50%, -50%) rotate(0deg)";
+            }
+
+            const screenBoxWidth = display.rotated ? displayHeight : displayWidth;
+            const screenBoxHeight = display.rotated ? displayWidth : displayHeight;
+            const left = (viewportWidth - screenBoxWidth) * 0.5;
+            const top = (viewportHeight - screenBoxHeight) * 0.5;
+
+            display.layout = {
+                viewportWidth,
+                viewportHeight,
+                displayWidth,
+                displayHeight,
+                screenBoxWidth,
+                screenBoxHeight,
+                left,
+                top
+            };
+
+            resizeBackdropCanvas(viewportWidth, viewportHeight);
+            updateMasks(display.layout);
+        }
 
         // ========================================================
         // Timeline Update
         // ========================================================
 
-        function updatePlaying(
-            deltaTime
-        ) {
+        function updatePlaying(deltaTime) {
+            game.elapsed += deltaTime;
 
-            game.elapsed +=
-                deltaTime;
-
-
-            // 0 - 120 sec
-            if (
-                game.elapsed <
-                SCROLL_DURATION
-            ) {
-
-                const progress =
-                    clamp(
-
-                        game.elapsed /
-                        SCROLL_DURATION,
-
-                        0,
-                        1
-
-                    );
-
-
-                scene.x =
-                    lerp(
-
-                        0,
-
-                        -GAME_WIDTH,
-
-                        progress
-
-                    );
-
+            if (game.elapsed < SCROLL_DURATION) {
+                const progress = clamp(game.elapsed / SCROLL_DURATION, 0, 1);
+                scene.x = lerp(0, -GAME_WIDTH, progress);
+            } else if (game.elapsed < MAIN_DURATION) {
+                scene.x = -GAME_WIDTH;
+            } else {
+                scene.x = -GAME_WIDTH;
+                game.state = "fadeOut";
+                game.fadeAlpha = 0;
             }
-
-
-            // 120 - 240 sec
-            else if (
-                game.elapsed <
-                MAIN_DURATION
-            ) {
-
-                scene.x =
-                    -GAME_WIDTH;
-
-            }
-
-
-            // 240 sec
-            else {
-
-                scene.x =
-                    -GAME_WIDTH;
-
-
-                game.state =
-                    "fadeOut";
-
-
-                game.fadeAlpha =
-                    0;
-
-            }
-
         }
 
+        function updateFadeOut(deltaTime) {
+            game.fadeAlpha += deltaTime / FADE_DURATION;
+            game.fadeAlpha = clamp(game.fadeAlpha, 0, 1);
 
-        // ========================================================
-        // Fade Out
-        // ========================================================
-
-        function updateFadeOut(
-            deltaTime
-        ) {
-
-            game.fadeAlpha +=
-
-                deltaTime /
-                FADE_DURATION;
-
-
-            game.fadeAlpha =
-                clamp(
-
-                    game.fadeAlpha,
-
-                    0,
-                    1
-
-                );
-
-
-            if (
-                game.fadeAlpha >= 1
-            ) {
-
-                scene.x =
-                    0;
-
-
-                game.elapsed =
-                    0;
-
-
-                game.state =
-                    "fadeIn";
-
+            if (game.fadeAlpha >= 1) {
+                scene.x = 0;
+                game.elapsed = 0;
+                game.state = "fadeIn";
             }
-
         }
 
+        function updateFadeIn(deltaTime) {
+            game.fadeAlpha -= deltaTime / FADE_DURATION;
+            game.fadeAlpha = clamp(game.fadeAlpha, 0, 1);
 
-        // ========================================================
-        // Fade In
-        // ========================================================
-
-        function updateFadeIn(
-            deltaTime
-        ) {
-
-            game.fadeAlpha -=
-
-                deltaTime /
-                FADE_DURATION;
-
-
-            game.fadeAlpha =
-                clamp(
-
-                    game.fadeAlpha,
-
-                    0,
-                    1
-
-                );
-
-
-            if (
-                game.fadeAlpha <= 0
-            ) {
-
-                game.fadeAlpha =
-                    0;
-
-
-                game.state =
-                    "playing";
-
+            if (game.fadeAlpha <= 0) {
+                game.fadeAlpha = 0;
+                game.state = "playing";
             }
-
         }
 
-
-        // ========================================================
-        // Update
-        // ========================================================
-
-        function update(
-            deltaTime
-        ) {
-
-            if (
-                !game.ready
-            ) {
-
+        function update(deltaTime) {
+            if (!game.ready) {
                 return;
-
             }
 
-
-            switch (
-                game.state
-            ) {
-
+            switch (game.state) {
                 case "playing":
-
-                    updatePlaying(
-                        deltaTime
-                    );
-
+                    updatePlaying(deltaTime);
                     break;
-
 
                 case "fadeOut":
-
-                    updateFadeOut(
-                        deltaTime
-                    );
-
+                    updateFadeOut(deltaTime);
                     break;
-
 
                 case "fadeIn":
-
-                    updateFadeIn(
-                        deltaTime
-                    );
-
+                    updateFadeIn(deltaTime);
                     break;
-
             }
-
 
             updateDebug();
-
         }
 
-
         // ========================================================
-        // Draw Background
+        // Scene Drawing
         // ========================================================
 
-        function drawBackground() {
+        function drawMainScene() {
+            gameCtx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-            ctx.drawImage(
+            if (!game.ready) {
+                gameCtx.fillStyle = "#000";
+                gameCtx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+                return;
+            }
 
+            // BG01
+            gameCtx.drawImage(
                 BG01,
-
                 scene.x,
                 0,
-
                 GAME_WIDTH,
                 GAME_HEIGHT
-
             );
 
-
-            ctx.drawImage(
-
+            // BG02
+            gameCtx.drawImage(
                 BG02,
-
-                scene.x +
-                GAME_WIDTH,
-
+                scene.x + GAME_WIDTH,
                 0,
-
                 GAME_WIDTH,
                 GAME_HEIGHT
-
             );
 
+            // Fade overlay
+            if (game.fadeAlpha > 0) {
+                gameCtx.save();
+                gameCtx.globalAlpha = game.fadeAlpha;
+                gameCtx.fillStyle = "#000";
+                gameCtx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+                gameCtx.restore();
+            }
         }
 
+        function drawBackdropFromMainCanvas() {
+            const { viewportWidth, viewportHeight } = display.layout;
 
-        // ========================================================
-        // Fade
-        // ========================================================
+            backdropCtx.clearRect(0, 0, viewportWidth, viewportHeight);
 
-        function drawFade() {
-
-            if (
-                game.fadeAlpha <= 0
-            ) {
-
+            if (!game.ready) {
+                backdropCtx.fillStyle = "#000";
+                backdropCtx.fillRect(0, 0, viewportWidth, viewportHeight);
                 return;
-
             }
 
-
-            ctx.save();
-
-
-            ctx.globalAlpha =
-                game.fadeAlpha;
-
-
-            ctx.fillStyle =
-                "#000";
-
-
-            ctx.fillRect(
-
-                0,
-                0,
-
-                GAME_WIDTH,
-                GAME_HEIGHT
-
+            const scale = Math.max(
+                viewportWidth / GAME_WIDTH,
+                viewportHeight / GAME_HEIGHT
             );
 
+            const drawWidth = GAME_WIDTH * scale;
+            const drawHeight = GAME_HEIGHT * scale;
+            const drawX = (viewportWidth - drawWidth) * 0.5;
+            const drawY = (viewportHeight - drawHeight) * 0.5;
 
-            ctx.restore();
-
+            backdropCtx.drawImage(
+                gameCanvas,
+                drawX,
+                drawY,
+                drawWidth,
+                drawHeight
+            );
         }
-
-
-        // ========================================================
-        // Render
-        // ========================================================
 
         function render() {
-
-            ctx.clearRect(
-
-                0,
-                0,
-
-                GAME_WIDTH,
-                GAME_HEIGHT
-
-            );
-
-
-            if (
-                !game.ready
-            ) {
-
-                ctx.fillStyle =
-                    "#000";
-
-
-                ctx.fillRect(
-
-                    0,
-                    0,
-
-                    GAME_WIDTH,
-                    GAME_HEIGHT
-
-                );
-
-
-                return;
-
-            }
-
-
-            drawBackground();
-
-
-            /*
-                Player Layer
-                之後放這裡
-            */
-
-
-            /*
-                Game UI Layer
-                之後放這裡
-            */
-
-
-            drawFade();
-
+            drawMainScene();
+            drawBackdropFromMainCanvas();
         }
-
 
         // ========================================================
         // Debug
         // ========================================================
 
         function updateDebug() {
+            let phase = "";
 
-            let phase;
-
-
-            if (
-                game.state ===
-                "fadeOut"
-            ) {
-
-                phase =
-                    "Fade Out";
-
+            if (game.state === "fadeOut") {
+                phase = "Fade Out";
+            } else if (game.state === "fadeIn") {
+                phase = "Fade In";
+            } else if (game.elapsed < SCROLL_DURATION) {
+                phase = "BG01 Scrolling";
+            } else {
+                phase = "BG02 Hold";
             }
 
-            else if (
-                game.state ===
-                "fadeIn"
-            ) {
-
-                phase =
-                    "Fade In";
-
-            }
-
-            else if (
-                game.elapsed <
-                SCROLL_DURATION
-            ) {
-
-                phase =
-                    "BG01 Scrolling";
-
-            }
-
-            else {
-
-                phase =
-                    "BG02 Hold";
-
-            }
-
-
-            const minutes =
-                Math.floor(
-                    game.elapsed / 60
-                );
-
-
-            const seconds =
-                Math.floor(
-                    game.elapsed % 60
-                );
-
+            const minutes = Math.floor(game.elapsed / 60);
+            const seconds = Math.floor(game.elapsed % 60);
 
             debugElement.innerHTML =
-
-                "Phase: " +
-                phase +
-
+                "Phase: " + phase +
                 "<br>" +
-
-                "Time: " +
-                minutes +
-                ":" +
-
-                String(
-                    seconds
-                ).padStart(
-                    2,
-                    "0"
-                ) +
-
+                "Time: " + minutes + ":" + String(seconds).padStart(2, "0") +
                 "<br>" +
-
-                "Scene X: " +
-                Math.round(
-                    scene.x
-                ) +
-
+                "Scene X: " + Math.round(scene.x) +
                 "<br>" +
-
-                "Fade: " +
-                game.fadeAlpha
-                    .toFixed(2) +
-
+                "Fade: " + game.fadeAlpha.toFixed(2) +
                 "<br>" +
-
-                "Rotate: " +
-                (
-                    display.rotated
-                        ? "90°"
-                        : "0°"
-                );
-
+                "Rotate: " + (display.rotated ? "90°" : "0°");
         }
 
-
         // ========================================================
-        // Game Loop
+        // Loop
         // ========================================================
 
-        function gameLoop(
-            timestamp
-        ) {
-
-            if (
-                game.lastTimestamp === 0
-            ) {
-
-                game.lastTimestamp =
-                    timestamp;
-
+        function gameLoop(timestamp) {
+            if (game.lastTimestamp === 0) {
+                game.lastTimestamp = timestamp;
             }
 
+            let deltaTime = (timestamp - game.lastTimestamp) / 1000;
+            game.lastTimestamp = timestamp;
+            deltaTime = Math.min(deltaTime, 0.05);
 
-            let deltaTime =
-
-                (
-                    timestamp -
-                    game.lastTimestamp
-                )
-
-                / 1000;
-
-
-            game.lastTimestamp =
-                timestamp;
-
-
-            deltaTime =
-                Math.min(
-                    deltaTime,
-                    0.05
-                );
-
-
-            update(
-                deltaTime
-            );
-
-
+            update(deltaTime);
             render();
 
-
-            requestAnimationFrame(
-                gameLoop
-            );
-
+            requestAnimationFrame(gameLoop);
         }
-
-
-        // ========================================================
-        // Get Real Mobile Viewport
-        // ========================================================
-
-        function getViewportSize() {
-
-            if (
-                window.visualViewport
-            ) {
-
-                return {
-
-                    width:
-                        window.visualViewport.width,
-
-                    height:
-                        window.visualViewport.height
-
-                };
-
-            }
-
-
-            return {
-
-                width:
-                    window.innerWidth,
-
-                height:
-                    window.innerHeight
-
-            };
-
-        }
-
-
-        // ========================================================
-        // Resize
-        // ========================================================
-
-        function resizeGame() {
-
-            const size =
-                getViewportSize();
-
-
-            const screenWidth =
-                size.width;
-
-
-            const screenHeight =
-                size.height;
-
-
-            const mobile =
-                isMobileDevice();
-
-
-            let scale;
-
-
-            /*
-                ================================================
-                MOBILE
-                ================================================
-
-                使用 COVER。
-
-                完全填滿手機螢幕，
-                不出現黑邊。
-
-                不拉伸。
-
-                超出的部分自然裁切。
-            */
-
-            if (
-                mobile
-            ) {
-
-                if (
-                    !display.rotated
-                ) {
-
-                    scale =
-                        Math.max(
-
-                            screenWidth /
-                            GAME_WIDTH,
-
-                            screenHeight /
-                            GAME_HEIGHT
-
-                        );
-
-                }
-
-                else {
-
-                    scale =
-                        Math.max(
-
-                            screenWidth /
-                            GAME_HEIGHT,
-
-                            screenHeight /
-                            GAME_WIDTH
-
-                        );
-
-                }
-
-            }
-
-
-            /*
-                ================================================
-                DESKTOP
-                ================================================
-
-                使用 CONTAIN。
-
-                完整保留 16:9，
-                必要時留黑邊。
-            */
-
-            else {
-
-                if (
-                    !display.rotated
-                ) {
-
-                    scale =
-                        Math.min(
-
-                            screenWidth /
-                            GAME_WIDTH,
-
-                            screenHeight /
-                            GAME_HEIGHT
-
-                        );
-
-                }
-
-                else {
-
-                    scale =
-                        Math.min(
-
-                            screenWidth /
-                            GAME_HEIGHT,
-
-                            screenHeight /
-                            GAME_WIDTH
-
-                        );
-
-                }
-
-            }
-
-
-            display.scale =
-                scale;
-
-
-            gameContainer.style.width =
-
-                GAME_WIDTH *
-                scale +
-
-                "px";
-
-
-            gameContainer.style.height =
-
-                GAME_HEIGHT *
-                scale +
-
-                "px";
-
-
-            if (
-                display.rotated
-            ) {
-
-                gameContainer.style.transform =
-
-                    "translate(-50%, -50%) " +
-
-                    "rotate(90deg)";
-
-            }
-
-            else {
-
-                gameContainer.style.transform =
-
-                    "translate(-50%, -50%) " +
-
-                    "rotate(0deg)";
-
-            }
-
-        }
-
-
-        // ========================================================
-        // Native Landscape
-        // ========================================================
-
-        async function tryLandscape() {
-
-            try {
-
-                /*
-                    先嘗試 Fullscreen。
-                */
-
-                if (
-                    !document.fullscreenElement &&
-                    document.documentElement
-                        .requestFullscreen
-                ) {
-
-                    await document
-                        .documentElement
-                        .requestFullscreen();
-
-                }
-
-
-                /*
-                    Android Chrome 等瀏覽器
-                    可以真的鎖 Landscape。
-                */
-
-                if (
-                    screen.orientation &&
-                    screen.orientation.lock
-                ) {
-
-                    await screen
-                        .orientation
-                        .lock(
-                            "landscape"
-                        );
-
-
-                    display.rotated =
-                        false;
-
-
-                    setTimeout(
-                        resizeGame,
-                        150
-                    );
-
-
-                    return true;
-
-                }
-
-            }
-
-            catch (
-                error
-            ) {
-
-                console.log(
-                    "Native rotate unavailable.",
-                    error
-                );
-
-            }
-
-
-            return false;
-
-        }
-
 
         // ========================================================
         // Rotate
         // ========================================================
 
-        rotateButton.addEventListener(
-
-            "click",
-
-            async () => {
-
-                /*
-                    如果目前是直式手機，
-                    先嘗試真正切成 Landscape。
-                */
-
+        async function tryLandscape() {
+            try {
                 if (
-                    window.innerHeight >
-                    window.innerWidth
+                    !document.fullscreenElement &&
+                    document.documentElement.requestFullscreen
                 ) {
-
-                    const success =
-                        await tryLandscape();
-
-
-                    if (
-                        success
-                    ) {
-
-                        return;
-
-                    }
-
+                    await document.documentElement.requestFullscreen();
                 }
 
+                if (
+                    screen.orientation &&
+                    screen.orientation.lock
+                ) {
+                    await screen.orientation.lock("landscape");
 
-                /*
-                    Safari / 不支援 Orientation Lock
-                    時使用 CSS Rotate。
-                */
-
-                display.rotated =
-                    !display.rotated;
-
-
-                resizeGame();
-
+                    display.rotated = false;
+                    setTimeout(resizeGame, 150);
+                    return true;
+                }
+            } catch (error) {
+                console.log("Native rotate unavailable.", error);
             }
 
-        );
-
-
-        // ========================================================
-        // Resize Events
-        // ========================================================
-
-        window.addEventListener(
-
-            "resize",
-
-            resizeGame
-
-        );
-
-
-        window.addEventListener(
-
-            "orientationchange",
-
-            () => {
-
-                setTimeout(
-                    resizeGame,
-                    150
-                );
-
-            }
-
-        );
-
-
-        /*
-            iPhone Safari 很重要。
-
-            地址列 / 工具列縮放都會改變
-            visualViewport。
-        */
-
-        if (
-            window.visualViewport
-        ) {
-
-            window.visualViewport
-                .addEventListener(
-
-                    "resize",
-
-                    resizeGame
-
-                );
-
+            return false;
         }
 
+        rotateButton.addEventListener("click", async () => {
+            if (isMobileDevice() && window.innerHeight > window.innerWidth) {
+                const success = await tryLandscape();
+                if (success) {
+                    return;
+                }
+            }
+
+            display.rotated = !display.rotated;
+            resizeGame();
+        });
+
+        // ========================================================
+        // Events
+        // ========================================================
+
+        window.addEventListener("resize", resizeGame);
+
+        window.addEventListener("orientationchange", () => {
+            setTimeout(resizeGame, 150);
+        });
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener("resize", resizeGame);
+        }
 
         // ========================================================
         // Start
         // ========================================================
 
         resizeGame();
-
         loadAssets();
-
-        requestAnimationFrame(
-            gameLoop
-        );
-
+        requestAnimationFrame(gameLoop);
     </script>
 
 </body>
