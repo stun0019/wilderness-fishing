@@ -1,1 +1,1000 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
 
+    <meta
+        name="viewport"
+        content="width=device-width,
+                 initial-scale=1.0,
+                 maximum-scale=1.0,
+                 user-scalable=no"
+    >
+
+    <title>Wilderness Fishing</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 1280px;
+            height: 720px;
+            background: #000;
+        }
+
+        #loading {
+            position: fixed;
+
+            left: 50%;
+            top: 50%;
+
+            transform: translate(-50%, -50%);
+
+            color: white;
+
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+
+            pointer-events: none;
+        }
+
+        /*
+            測試資訊。
+
+            正式版不想看到的話：
+            display: none;
+        */
+        #debug {
+            position: fixed;
+
+            top: 12px;
+            left: 12px;
+
+            padding: 8px 12px;
+
+            background: rgba(0, 0, 0, 0.55);
+
+            color: white;
+
+            border-radius: 5px;
+
+            font-family: monospace;
+            font-size: 14px;
+
+            line-height: 1.6;
+
+            pointer-events: none;
+            user-select: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas
+        id="gameCanvas"
+        width="1280"
+        height="720"
+    ></canvas>
+
+    <div id="loading">
+        Loading...
+    </div>
+
+    <div id="debug">
+        Loading...
+    </div>
+
+
+    <script>
+
+        // =========================================================
+        // Game Resolution
+        // =========================================================
+
+        const GAME_WIDTH = 1280;
+        const GAME_HEIGHT = 720;
+
+
+        // =========================================================
+        // Timeline
+        // =========================================================
+
+        /*
+            一輪完整流程：
+
+            0 ~ 120 秒
+            BG01 → BG02 滾動
+
+            120 ~ 240 秒
+            BG02 固定
+
+            240 秒
+            Fade Out
+
+            Fade 完成後：
+            回 BG01
+            Fade In
+            下一輪
+        */
+
+        const SCROLL_DURATION = 120;
+        const HOLD_DURATION = 120;
+
+        /*
+            4 分鐘主流程。
+        */
+        const MAIN_DURATION =
+            SCROLL_DURATION +
+            HOLD_DURATION;
+
+
+        /*
+            Fade Out / Fade In 時間。
+
+            目前各 1.5 秒。
+
+            想快一點：
+            0.5
+
+            想慢一點：
+            2.0
+        */
+        const FADE_DURATION = 1.5;
+
+
+        // =========================================================
+        // Canvas
+        // =========================================================
+
+        const canvas =
+            document.getElementById("gameCanvas");
+
+        const ctx =
+            canvas.getContext("2d");
+
+        const loadingElement =
+            document.getElementById("loading");
+
+        const debugElement =
+            document.getElementById("debug");
+
+
+        ctx.imageSmoothingEnabled = true;
+
+
+        // =========================================================
+        // Assets
+        // =========================================================
+
+        const BG01 = new Image();
+        const BG02 = new Image();
+
+        BG01.src = "./assets/BG01.png";
+        BG02.src = "./assets/BG02.png";
+
+
+        // =========================================================
+        // Game State
+        // =========================================================
+
+        const game = {
+
+            ready: false,
+
+            lastTimestamp: 0,
+
+            /*
+                目前一輪已經經過多少秒。
+            */
+            elapsed: 0,
+
+            /*
+                狀態：
+
+                playing
+                fadeOut
+                fadeIn
+            */
+            state: "playing",
+
+            /*
+                黑幕透明度。
+
+                0 = 完全透明
+                1 = 全黑
+            */
+            fadeAlpha: 0
+
+        };
+
+
+        // =========================================================
+        // Scene
+        // =========================================================
+
+        const scene = {
+
+            /*
+                0：
+
+                BG01 完整顯示。
+
+
+                -1280：
+
+                BG02 完整顯示。
+            */
+            x: 0
+
+        };
+
+
+        // =========================================================
+        // Image Loader
+        // =========================================================
+
+        function loadImage(image) {
+
+            return new Promise(
+                (resolve, reject) => {
+
+                    image.onload = function () {
+
+                        resolve(image);
+
+                    };
+
+
+                    image.onerror = function () {
+
+                        reject(
+                            new Error(
+                                "Image load failed: " +
+                                image.src
+                            )
+                        );
+
+                    };
+
+                }
+            );
+
+        }
+
+
+        // =========================================================
+        // Load Assets
+        // =========================================================
+
+        async function loadAssets() {
+
+            try {
+
+                await Promise.all([
+
+                    loadImage(BG01),
+                    loadImage(BG02)
+
+                ]);
+
+
+                game.ready = true;
+
+                loadingElement.style.display =
+                    "none";
+
+
+                console.log(
+                    "BG01:",
+                    BG01.width,
+                    BG01.height
+                );
+
+
+                console.log(
+                    "BG02:",
+                    BG02.width,
+                    BG02.height
+                );
+
+
+            }
+            catch (error) {
+
+                console.error(error);
+
+                loadingElement.textContent =
+                    "Failed to load assets.";
+
+            }
+
+        }
+
+
+        // =========================================================
+        // Clamp
+        // =========================================================
+
+        function clamp(
+            value,
+            min,
+            max
+        ) {
+
+            return Math.max(
+                min,
+                Math.min(
+                    max,
+                    value
+                )
+            );
+
+        }
+
+
+        // =========================================================
+        // Linear Interpolation
+        // =========================================================
+
+        function lerp(
+            start,
+            end,
+            t
+        ) {
+
+            return (
+                start +
+                (end - start) * t
+            );
+
+        }
+
+
+        // =========================================================
+        // Update Playing
+        // =========================================================
+
+        function updatePlaying(
+            deltaTime
+        ) {
+
+            game.elapsed +=
+                deltaTime;
+
+
+            // -----------------------------------------------------
+            // Phase 1
+            //
+            // 0 ~ 120 秒
+            //
+            // BG01 從：
+            //
+            // x = 0
+            //
+            // 移動到：
+            //
+            // x = -1280
+            //
+            // 正好花 2 分鐘。
+            // -----------------------------------------------------
+
+            if (
+                game.elapsed <
+                SCROLL_DURATION
+            ) {
+
+                const progress =
+                    clamp(
+
+                        game.elapsed /
+                        SCROLL_DURATION,
+
+                        0,
+                        1
+
+                    );
+
+
+                scene.x =
+                    lerp(
+                        0,
+                        -GAME_WIDTH,
+                        progress
+                    );
+
+            }
+
+
+            // -----------------------------------------------------
+            // Phase 2
+            //
+            // 120 ~ 240 秒
+            //
+            // BG02 固定。
+            // -----------------------------------------------------
+
+            else if (
+                game.elapsed <
+                MAIN_DURATION
+            ) {
+
+                scene.x =
+                    -GAME_WIDTH;
+
+            }
+
+
+            // -----------------------------------------------------
+            // 4 分鐘結束
+            //
+            // 開始 Fade Out。
+            // -----------------------------------------------------
+
+            else {
+
+                scene.x =
+                    -GAME_WIDTH;
+
+
+                game.state =
+                    "fadeOut";
+
+
+                game.fadeAlpha =
+                    0;
+
+            }
+
+        }
+
+
+        // =========================================================
+        // Update Fade Out
+        // =========================================================
+
+        function updateFadeOut(
+            deltaTime
+        ) {
+
+            game.fadeAlpha +=
+
+                deltaTime /
+                FADE_DURATION;
+
+
+            game.fadeAlpha =
+                clamp(
+                    game.fadeAlpha,
+                    0,
+                    1
+                );
+
+
+            /*
+                全黑後：
+
+                在使用者看不到的狀態下，
+                把背景瞬間切回 BG01。
+            */
+
+            if (
+                game.fadeAlpha >= 1
+            ) {
+
+                scene.x = 0;
+
+                game.elapsed = 0;
+
+                game.state =
+                    "fadeIn";
+
+            }
+
+        }
+
+
+        // =========================================================
+        // Update Fade In
+        // =========================================================
+
+        function updateFadeIn(
+            deltaTime
+        ) {
+
+            game.fadeAlpha -=
+
+                deltaTime /
+                FADE_DURATION;
+
+
+            game.fadeAlpha =
+                clamp(
+                    game.fadeAlpha,
+                    0,
+                    1
+                );
+
+
+            /*
+                完全顯示 BG01。
+
+                下一輪正式開始。
+            */
+
+            if (
+                game.fadeAlpha <= 0
+            ) {
+
+                game.fadeAlpha = 0;
+
+                game.state =
+                    "playing";
+
+            }
+
+        }
+
+
+        // =========================================================
+        // Update
+        // =========================================================
+
+        function update(
+            deltaTime
+        ) {
+
+            if (!game.ready) {
+                return;
+            }
+
+
+            switch (
+                game.state
+            ) {
+
+                case "playing":
+
+                    updatePlaying(
+                        deltaTime
+                    );
+
+                    break;
+
+
+                case "fadeOut":
+
+                    updateFadeOut(
+                        deltaTime
+                    );
+
+                    break;
+
+
+                case "fadeIn":
+
+                    updateFadeIn(
+                        deltaTime
+                    );
+
+                    break;
+
+            }
+
+
+            updateDebug();
+
+        }
+
+
+        // =========================================================
+        // Draw Background
+        // =========================================================
+
+        function drawBackground() {
+
+            /*
+                BG01
+
+                World X：
+                0 ~ 1280
+            */
+
+            ctx.drawImage(
+
+                BG01,
+
+                scene.x,
+                0,
+
+                GAME_WIDTH,
+                GAME_HEIGHT
+
+            );
+
+
+            /*
+                BG02
+
+                World X：
+                1280 ~ 2560
+
+                永遠接在 BG01 後面。
+            */
+
+            ctx.drawImage(
+
+                BG02,
+
+                scene.x +
+                GAME_WIDTH,
+
+                0,
+
+                GAME_WIDTH,
+                GAME_HEIGHT
+
+            );
+
+        }
+
+
+        // =========================================================
+        // Fade Overlay
+        // =========================================================
+
+        function drawFade() {
+
+            if (
+                game.fadeAlpha <= 0
+            ) {
+
+                return;
+
+            }
+
+
+            ctx.save();
+
+
+            ctx.globalAlpha =
+                game.fadeAlpha;
+
+
+            ctx.fillStyle =
+                "#000000";
+
+
+            ctx.fillRect(
+
+                0,
+                0,
+
+                GAME_WIDTH,
+                GAME_HEIGHT
+
+            );
+
+
+            ctx.restore();
+
+        }
+
+
+        // =========================================================
+        // Render
+        // =========================================================
+
+        function render() {
+
+            ctx.clearRect(
+
+                0,
+                0,
+
+                GAME_WIDTH,
+                GAME_HEIGHT
+
+            );
+
+
+            if (!game.ready) {
+
+                ctx.fillStyle =
+                    "#000000";
+
+
+                ctx.fillRect(
+
+                    0,
+                    0,
+
+                    GAME_WIDTH,
+                    GAME_HEIGHT
+
+                );
+
+
+                return;
+
+            }
+
+
+            // -----------------------------------------------------
+            // World
+            // -----------------------------------------------------
+
+            drawBackground();
+
+
+            // -----------------------------------------------------
+            // 未來 Player / UI
+            //
+            // 要畫在這裡。
+            //
+            // Player 不使用 scene.x。
+            // -----------------------------------------------------
+
+
+            // -----------------------------------------------------
+            // Fade 必須最後畫
+            // -----------------------------------------------------
+
+            drawFade();
+
+        }
+
+
+        // =========================================================
+        // Debug
+        // =========================================================
+
+        function updateDebug() {
+
+            let phase = "";
+
+
+            if (
+                game.state ===
+                "fadeOut"
+            ) {
+
+                phase =
+                    "Fade Out";
+
+            }
+
+            else if (
+                game.state ===
+                "fadeIn"
+            ) {
+
+                phase =
+                    "Fade In";
+
+            }
+
+            else if (
+                game.elapsed <
+                SCROLL_DURATION
+            ) {
+
+                phase =
+                    "BG01 Scrolling";
+
+            }
+
+            else {
+
+                phase =
+                    "BG02 Hold";
+
+            }
+
+
+            const minutes =
+                Math.floor(
+                    game.elapsed / 60
+                );
+
+
+            const seconds =
+                Math.floor(
+                    game.elapsed % 60
+                );
+
+
+            debugElement.innerHTML =
+
+                "Phase: " +
+                phase +
+
+                "<br>" +
+
+                "Time: " +
+                minutes +
+                ":" +
+                String(seconds)
+                    .padStart(2, "0") +
+
+                "<br>" +
+
+                "Scene X: " +
+                Math.round(scene.x) +
+
+                "<br>" +
+
+                "Fade: " +
+                game.fadeAlpha
+                    .toFixed(2);
+
+        }
+
+
+        // =========================================================
+        // Game Loop
+        // =========================================================
+
+        function gameLoop(
+            timestamp
+        ) {
+
+            if (
+                game.lastTimestamp ===
+                0
+            ) {
+
+                game.lastTimestamp =
+                    timestamp;
+
+            }
+
+
+            let deltaTime =
+
+                (
+                    timestamp -
+                    game.lastTimestamp
+                )
+
+                / 1000;
+
+
+            game.lastTimestamp =
+                timestamp;
+
+
+            /*
+                防止切換瀏覽器分頁後，
+                回來瞬間跳過大量時間。
+            */
+
+            deltaTime =
+                Math.min(
+                    deltaTime,
+                    0.05
+                );
+
+
+            update(
+                deltaTime
+            );
+
+
+            render();
+
+
+            requestAnimationFrame(
+                gameLoop
+            );
+
+        }
+
+
+        // =========================================================
+        // Responsive Canvas
+        // =========================================================
+
+        function resizeGame() {
+
+            const screenWidth =
+                window.innerWidth;
+
+            const screenHeight =
+                window.innerHeight;
+
+
+            const gameAspect =
+                GAME_WIDTH /
+                GAME_HEIGHT;
+
+
+            const screenAspect =
+                screenWidth /
+                screenHeight;
+
+
+            let width;
+            let height;
+
+
+            if (
+                screenAspect >
+                gameAspect
+            ) {
+
+                height =
+                    screenHeight;
+
+                width =
+                    height *
+                    gameAspect;
+
+            }
+
+            else {
+
+                width =
+                    screenWidth;
+
+                height =
+                    width /
+                    gameAspect;
+
+            }
+
+
+            canvas.style.width =
+                width + "px";
+
+            canvas.style.height =
+                height + "px";
+
+        }
+
+
+        // =========================================================
+        // Resize
+        // =========================================================
+
+        window.addEventListener(
+            "resize",
+            resizeGame
+        );
+
+
+        // =========================================================
+        // Start
+        // =========================================================
+
+        resizeGame();
+
+        loadAssets();
+
+        requestAnimationFrame(
+            gameLoop
+        );
+
+    </script>
+
+</body>
+</html>
