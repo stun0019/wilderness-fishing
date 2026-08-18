@@ -9,18 +9,14 @@
             width=device-width,
             initial-scale=1.0,
             maximum-scale=1.0,
-            user-scalable=no
+            user-scalable=no,
+            viewport-fit=cover
         "
     >
 
     <title>Wilderness Fishing</title>
 
     <style>
-
-        /* ========================================================
-           Reset
-        ======================================================== */
-
         * {
             margin: 0;
             padding: 0;
@@ -29,21 +25,42 @@
 
         html,
         body {
+            position: fixed;
+            inset: 0;
+
             width: 100%;
             height: 100%;
+
             overflow: hidden;
 
             background: #000;
+
+            touch-action: none;
+            overscroll-behavior: none;
         }
 
         body {
-            position: relative;
+            user-select: none;
+            -webkit-user-select: none;
+        }
 
-            display: flex;
-            justify-content: center;
-            align-items: center;
 
-            touch-action: none;
+        /* ========================================================
+           Viewport
+        ======================================================== */
+
+        #viewport {
+            position: fixed;
+
+            left: 0;
+            top: 0;
+
+            width: 100dvw;
+            height: 100dvh;
+
+            overflow: hidden;
+
+            background: #000;
         }
 
 
@@ -52,12 +69,23 @@
         ======================================================== */
 
         #gameContainer {
-            position: relative;
+            position: absolute;
+
+            left: 50%;
+            top: 50%;
 
             width: 1280px;
             height: 720px;
 
-            transform-origin: center center;
+            transform:
+                translate(-50%, -50%);
+
+            transform-origin:
+                center center;
+
+            overflow: hidden;
+
+            background: #000;
         }
 
 
@@ -72,8 +100,6 @@
             height: 100%;
 
             background: #000;
-
-            aspect-ratio: 16 / 9;
         }
 
 
@@ -87,12 +113,10 @@
             left: 50%;
             top: 50%;
 
-            transform: translate(
-                -50%,
-                -50%
-            );
+            transform:
+                translate(-50%, -50%);
 
-            color: #ffffff;
+            color: #fff;
 
             font-family:
                 Arial,
@@ -100,9 +124,9 @@
 
             font-size: 18px;
 
-            pointer-events: none;
+            z-index: 5000;
 
-            z-index: 100;
+            pointer-events: none;
         }
 
 
@@ -113,12 +137,21 @@
         #debug {
             position: fixed;
 
-            top: 12px;
-            left: 12px;
+            left:
+                max(
+                    12px,
+                    env(safe-area-inset-left)
+                );
+
+            top:
+                max(
+                    12px,
+                    env(safe-area-inset-top)
+                );
 
             padding: 8px 12px;
 
-            color: #ffffff;
+            color: #fff;
 
             background:
                 rgba(
@@ -130,17 +163,14 @@
 
             border-radius: 5px;
 
-            font-family:
-                monospace;
-
+            font-family: monospace;
             font-size: 14px;
 
-            line-height: 1.6;
+            line-height: 1.5;
 
             pointer-events: none;
-            user-select: none;
 
-            z-index: 1000;
+            z-index: 9999;
         }
 
 
@@ -151,60 +181,52 @@
         #rotateButton {
             position: fixed;
 
-            top: 16px;
-            right: 16px;
+            right:
+                max(
+                    16px,
+                    env(safe-area-inset-right)
+                );
 
-            min-width: 100px;
+            top:
+                max(
+                    16px,
+                    env(safe-area-inset-top)
+                );
 
-            padding:
-                12px
-                18px;
+            padding: 12px 20px;
 
-            border: none;
+            min-width: 108px;
 
-            border-radius: 8px;
+            border: 0;
+
+            border-radius: 10px;
 
             background:
                 rgba(
-                    0,
-                    0,
-                    0,
-                    0.7
+                    20,
+                    20,
+                    20,
+                    0.88
                 );
 
-            color: #ffffff;
+            color: #fff;
 
             font-family:
                 Arial,
                 sans-serif;
 
-            font-size: 14px;
-            font-weight: bold;
+            font-size: 15px;
+            font-weight: 700;
 
             letter-spacing: 1px;
 
             cursor: pointer;
 
-            user-select: none;
+            z-index: 10000;
 
-            z-index: 9999;
-
-            transition:
-                background 0.15s,
-                transform 0.15s;
+            -webkit-tap-highlight-color:
+                transparent;
         }
-
-
-        #rotateButton:hover {
-            background:
-                rgba(
-                    30,
-                    30,
-                    30,
-                    0.9
-                );
-        }
-
 
         #rotateButton:active {
             transform:
@@ -217,43 +239,30 @@
 
 <body>
 
+    <div id="viewport">
 
-    <!-- ========================================================
-         Game
-    ======================================================== -->
+        <div id="gameContainer">
 
-    <div id="gameContainer">
+            <canvas
+                id="gameCanvas"
+                width="1280"
+                height="720"
+            ></canvas>
 
-        <canvas
-            id="gameCanvas"
-            width="1280"
-            height="720"
-        ></canvas>
+        </div>
 
     </div>
 
-
-    <!-- ========================================================
-         Loading
-    ======================================================== -->
 
     <div id="loading">
         Loading...
     </div>
 
 
-    <!-- ========================================================
-         Debug
-    ======================================================== -->
-
     <div id="debug">
         Loading...
     </div>
 
-
-    <!-- ========================================================
-         Rotate
-    ======================================================== -->
 
     <button
         id="rotateButton"
@@ -263,18 +272,14 @@
     </button>
 
 
-
     <script>
 
         // ========================================================
-        // Game Resolution
+        // Resolution
         // ========================================================
 
-        const GAME_WIDTH =
-            1280;
-
-        const GAME_HEIGHT =
-            720;
+        const GAME_WIDTH = 1280;
+        const GAME_HEIGHT = 720;
 
         const GAME_ASPECT =
             GAME_WIDTH /
@@ -286,94 +291,65 @@
         // ========================================================
 
         /*
-            0:00 ~ 2:00
+            00:00 - 02:00
+            BG01 -> BG02
 
-            BG01 往左移動
-            BG02 從右側進入。
+            02:00 - 04:00
+            BG02 固定
 
+            04:00
+            Fade Out
 
-            2:00 ~ 4:00
-
-            BG02 固定。
-
-
-            4:00
-
-            Fade Out。
-
-
-            全黑後：
-
-            BG01 Reset。
-
-
-            Fade In。
-
-
-            下一輪。
+            全黑
+            ->
+            BG01
+            ->
+            Fade In
         */
 
-        const SCROLL_DURATION =
-            120;
-
-        const HOLD_DURATION =
-            120;
+        const SCROLL_DURATION = 120;
+        const HOLD_DURATION = 120;
 
         const MAIN_DURATION =
-
             SCROLL_DURATION +
-
             HOLD_DURATION;
 
-
-        /*
-            Fade Out：
-
-            1.5 秒
-
-
-            Fade In：
-
-            1.5 秒
-        */
-
-        const FADE_DURATION =
-            1.5;
+        const FADE_DURATION = 1.5;
 
 
         // ========================================================
         // DOM
         // ========================================================
 
+        const viewport =
+            document.getElementById(
+                "viewport"
+            );
+
         const gameContainer =
             document.getElementById(
                 "gameContainer"
             );
-
 
         const canvas =
             document.getElementById(
                 "gameCanvas"
             );
 
-
         const ctx =
             canvas.getContext(
                 "2d"
             );
-
 
         const loadingElement =
             document.getElementById(
                 "loading"
             );
 
-
         const debugElement =
             document.getElementById(
                 "debug"
             );
-
 
         const rotateButton =
             document.getElementById(
@@ -389,12 +365,8 @@
         // Assets
         // ========================================================
 
-        const BG01 =
-            new Image();
-
-        const BG02 =
-            new Image();
-
+        const BG01 = new Image();
+        const BG02 = new Image();
 
         BG01.src =
             "./assets/BG01.png";
@@ -427,17 +399,6 @@
         // Scene
         // ========================================================
 
-        /*
-            scene.x = 0
-
-            BG01 完整顯示。
-
-
-            scene.x = -1280
-
-            BG02 完整顯示。
-        */
-
         const scene = {
 
             x: 0
@@ -446,29 +407,44 @@
 
 
         // ========================================================
-        // Display State
+        // Display
         // ========================================================
 
         const display = {
 
-            /*
-                false：
+            rotated: false,
 
-                一般 16:9。
-
-
-                true：
-
-                CSS 旋轉 90 度。
-            */
-
-            rotated: false
+            scale: 1
 
         };
 
 
         // ========================================================
-        // Load Image
+        // Device Detection
+        // ========================================================
+
+        function isMobileDevice() {
+
+            return (
+
+                window.matchMedia(
+                    "(pointer: coarse)"
+                ).matches
+
+                ||
+
+                /Android|iPhone|iPad|iPod/i
+                    .test(
+                        navigator.userAgent
+                    )
+
+            );
+
+        }
+
+
+        // ========================================================
+        // Image Loader
         // ========================================================
 
         function loadImage(
@@ -486,9 +462,7 @@
                         image.naturalWidth > 0
                     ) {
 
-                        resolve(
-                            image
-                        );
+                        resolve(image);
 
                         return;
 
@@ -496,41 +470,28 @@
 
 
                     image.onload =
-                        function () {
-
-                            resolve(
-                                image
-                            );
-
-                        };
+                        () => resolve(
+                            image
+                        );
 
 
                     image.onerror =
-                        function () {
+                        () => reject(
 
-                            reject(
+                            new Error(
 
-                                new Error(
+                                "Failed to load " +
+                                image.src
 
-                                    "Failed to load: " +
+                            )
 
-                                    image.src
-
-                                )
-
-                            );
-
-                        };
+                        );
 
                 }
             );
 
         }
 
-
-        // ========================================================
-        // Load Assets
-        // ========================================================
 
         async function loadAssets() {
 
@@ -556,28 +517,6 @@
                 loadingElement.style.display =
                     "none";
 
-
-                console.log(
-
-                    "BG01:",
-
-                    BG01.width,
-
-                    BG01.height
-
-                );
-
-
-                console.log(
-
-                    "BG02:",
-
-                    BG02.width,
-
-                    BG02.height
-
-                );
-
             }
 
             catch (
@@ -598,7 +537,7 @@
 
 
         // ========================================================
-        // Clamp
+        // Utils
         // ========================================================
 
         function clamp(
@@ -612,11 +551,8 @@
                 min,
 
                 Math.min(
-
                     max,
-
                     value
-
                 )
 
             );
@@ -624,14 +560,10 @@
         }
 
 
-        // ========================================================
-        // Lerp
-        // ========================================================
-
         function lerp(
             start,
             end,
-            progress
+            t
         ) {
 
             return (
@@ -643,7 +575,7 @@
                     start
                 ) *
 
-                progress
+                t
 
             );
 
@@ -651,7 +583,7 @@
 
 
         // ========================================================
-        // Playing
+        // Timeline Update
         // ========================================================
 
         function updatePlaying(
@@ -662,14 +594,7 @@
                 deltaTime;
 
 
-            // ----------------------------------------------------
-            // Phase 1
-            //
-            // 0 ~ 120 秒
-            //
-            // BG01 左移。
-            // ----------------------------------------------------
-
+            // 0 - 120 sec
             if (
                 game.elapsed <
                 SCROLL_DURATION
@@ -679,11 +604,9 @@
                     clamp(
 
                         game.elapsed /
-
                         SCROLL_DURATION,
 
                         0,
-
                         1
 
                     );
@@ -703,14 +626,7 @@
             }
 
 
-            // ----------------------------------------------------
-            // Phase 2
-            //
-            // 120 ~ 240 秒
-            //
-            // BG02 固定。
-            // ----------------------------------------------------
-
+            // 120 - 240 sec
             else if (
                 game.elapsed <
                 MAIN_DURATION
@@ -722,12 +638,7 @@
             }
 
 
-            // ----------------------------------------------------
-            // 4 分鐘結束
-            //
-            // Fade Out
-            // ----------------------------------------------------
-
+            // 240 sec
             else {
 
                 scene.x =
@@ -757,7 +668,6 @@
             game.fadeAlpha +=
 
                 deltaTime /
-
                 FADE_DURATION;
 
 
@@ -767,18 +677,10 @@
                     game.fadeAlpha,
 
                     0,
-
                     1
 
                 );
 
-
-            /*
-                完全黑畫面。
-
-                這時候把 Scene
-                偷偷 Reset 到 BG01。
-            */
 
             if (
                 game.fadeAlpha >= 1
@@ -811,7 +713,6 @@
             game.fadeAlpha -=
 
                 deltaTime /
-
                 FADE_DURATION;
 
 
@@ -821,7 +722,6 @@
                     game.fadeAlpha,
 
                     0,
-
                     1
 
                 );
@@ -899,14 +799,10 @@
 
 
         // ========================================================
-        // Background
+        // Draw Background
         // ========================================================
 
         function drawBackground() {
-
-            /*
-                BG01
-            */
 
             ctx.drawImage(
 
@@ -920,13 +816,6 @@
 
             );
 
-
-            /*
-                BG02
-
-                永遠接在 BG01
-                右側。
-            */
 
             ctx.drawImage(
 
@@ -968,7 +857,7 @@
 
 
             ctx.fillStyle =
-                "#000000";
+                "#000";
 
 
             ctx.fillRect(
@@ -1028,34 +917,20 @@
             }
 
 
-            // ----------------------------------------------------
-            // Background
-            // ----------------------------------------------------
-
             drawBackground();
 
 
-            // ----------------------------------------------------
-            // Player
-            //
-            // 未來角色畫這裡。
-            //
-            // 不要加 scene.x。
-            // ----------------------------------------------------
+            /*
+                Player Layer
+                之後放這裡
+            */
 
 
-            // ----------------------------------------------------
-            // UI
-            //
-            // 未來 UI 畫這裡。
-            // ----------------------------------------------------
+            /*
+                Game UI Layer
+                之後放這裡
+            */
 
-
-            // ----------------------------------------------------
-            // Fade
-            //
-            // 必須最後畫。
-            // ----------------------------------------------------
 
             drawFade();
 
@@ -1111,19 +986,13 @@
 
             const minutes =
                 Math.floor(
-
-                    game.elapsed /
-                    60
-
+                    game.elapsed / 60
                 );
 
 
             const seconds =
                 Math.floor(
-
-                    game.elapsed %
-                    60
-
+                    game.elapsed % 60
                 );
 
 
@@ -1137,6 +1006,7 @@
                 "Time: " +
                 minutes +
                 ":" +
+
                 String(
                     seconds
                 ).padStart(
@@ -1154,9 +1024,8 @@
                 "<br>" +
 
                 "Fade: " +
-                game.fadeAlpha.toFixed(
-                    2
-                ) +
+                game.fadeAlpha
+                    .toFixed(2) +
 
                 "<br>" +
 
@@ -1179,8 +1048,7 @@
         ) {
 
             if (
-                game.lastTimestamp ===
-                0
+                game.lastTimestamp === 0
             ) {
 
                 game.lastTimestamp =
@@ -1193,7 +1061,6 @@
 
                 (
                     timestamp -
-
                     game.lastTimestamp
                 )
 
@@ -1204,18 +1071,10 @@
                 timestamp;
 
 
-            /*
-                防止切 Tab 後
-                delta time 太大。
-            */
-
             deltaTime =
                 Math.min(
-
                     deltaTime,
-
                     0.05
-
                 );
 
 
@@ -1235,216 +1094,207 @@
 
 
         // ========================================================
-        // Resize Game
+        // Get Real Mobile Viewport
+        // ========================================================
+
+        function getViewportSize() {
+
+            if (
+                window.visualViewport
+            ) {
+
+                return {
+
+                    width:
+                        window.visualViewport.width,
+
+                    height:
+                        window.visualViewport.height
+
+                };
+
+            }
+
+
+            return {
+
+                width:
+                    window.innerWidth,
+
+                height:
+                    window.innerHeight
+
+            };
+
+        }
+
+
+        // ========================================================
+        // Resize
         // ========================================================
 
         function resizeGame() {
 
+            const size =
+                getViewportSize();
+
+
             const screenWidth =
-                window.innerWidth;
+                size.width;
 
 
             const screenHeight =
-                window.innerHeight;
+                size.height;
 
 
-            let availableWidth;
-            let availableHeight;
+            const mobile =
+                isMobileDevice();
+
+
+            let scale;
 
 
             /*
-                ----------------------------------------------------
-                一般模式
-                ----------------------------------------------------
+                ================================================
+                MOBILE
+                ================================================
+
+                使用 COVER。
+
+                完全填滿手機螢幕，
+                不出現黑邊。
+
+                不拉伸。
+
+                超出的部分自然裁切。
             */
 
             if (
-                !display.rotated
+                mobile
             ) {
 
-                availableWidth =
-                    screenWidth;
-
-
-                availableHeight =
-                    screenHeight;
-
-
-                const screenAspect =
-
-                    availableWidth /
-
-                    availableHeight;
-
-
-                let width;
-                let height;
-
-
                 if (
-                    screenAspect >
-                    GAME_ASPECT
+                    !display.rotated
                 ) {
 
-                    /*
-                        Screen 比 16:9 寬。
+                    scale =
+                        Math.max(
 
-                        高度塞滿。
-                    */
+                            screenWidth /
+                            GAME_WIDTH,
 
-                    height =
-                        availableHeight;
+                            screenHeight /
+                            GAME_HEIGHT
 
-
-                    width =
-                        height *
-
-                        GAME_ASPECT;
+                        );
 
                 }
 
                 else {
 
-                    /*
-                        Screen 比 16:9 窄。
+                    scale =
+                        Math.max(
 
-                        寬度塞滿。
-                    */
+                            screenWidth /
+                            GAME_HEIGHT,
 
-                    width =
-                        availableWidth;
+                            screenHeight /
+                            GAME_WIDTH
 
-
-                    height =
-                        width /
-
-                        GAME_ASPECT;
+                        );
 
                 }
-
-
-                gameContainer.style.width =
-                    width +
-                    "px";
-
-
-                gameContainer.style.height =
-                    height +
-                    "px";
-
-
-                gameContainer.style.transform =
-                    "rotate(0deg)";
 
             }
 
 
             /*
-                ----------------------------------------------------
-                Rotate 90°
-                ----------------------------------------------------
+                ================================================
+                DESKTOP
+                ================================================
+
+                使用 CONTAIN。
+
+                完整保留 16:9，
+                必要時留黑邊。
             */
 
             else {
 
-                /*
-                    旋轉後：
-
-                    原本 Game Width
-                    會變成畫面 Height。
-
-                    原本 Game Height
-                    會變成畫面 Width。
-                */
-
-                const rotatedAspect =
-
-                    GAME_HEIGHT /
-
-                    GAME_WIDTH;
-
-
-                const screenAspect =
-
-                    screenWidth /
-
-                    screenHeight;
-
-
-                let finalDisplayWidth;
-                let finalDisplayHeight;
-
-
                 if (
-                    screenAspect >
-                    rotatedAspect
+                    !display.rotated
                 ) {
 
-                    /*
-                        Screen 相對較寬。
+                    scale =
+                        Math.min(
 
-                        用高度為基準。
-                    */
+                            screenWidth /
+                            GAME_WIDTH,
 
-                    finalDisplayHeight =
-                        screenHeight;
+                            screenHeight /
+                            GAME_HEIGHT
 
-
-                    finalDisplayWidth =
-
-                        finalDisplayHeight *
-
-                        rotatedAspect;
+                        );
 
                 }
 
                 else {
 
-                    /*
-                        Screen 相對較窄。
+                    scale =
+                        Math.min(
 
-                        用寬度為基準。
-                    */
+                            screenWidth /
+                            GAME_HEIGHT,
 
-                    finalDisplayWidth =
-                        screenWidth;
+                            screenHeight /
+                            GAME_WIDTH
 
-
-                    finalDisplayHeight =
-
-                        finalDisplayWidth /
-
-                        rotatedAspect;
+                        );
 
                 }
 
-
-                /*
-                    注意：
-
-                    Container 自己仍是
-                    16:9。
-
-                    只是 Rotate 90°。
-                */
-
-                gameContainer.style.width =
-
-                    finalDisplayHeight +
-
-                    "px";
+            }
 
 
-                gameContainer.style.height =
+            display.scale =
+                scale;
 
-                    finalDisplayWidth +
 
-                    "px";
+            gameContainer.style.width =
 
+                GAME_WIDTH *
+                scale +
+
+                "px";
+
+
+            gameContainer.style.height =
+
+                GAME_HEIGHT *
+                scale +
+
+                "px";
+
+
+            if (
+                display.rotated
+            ) {
 
                 gameContainer.style.transform =
 
+                    "translate(-50%, -50%) " +
+
                     "rotate(90deg)";
+
+            }
+
+            else {
+
+                gameContainer.style.transform =
+
+                    "translate(-50%, -50%) " +
+
+                    "rotate(0deg)";
 
             }
 
@@ -1452,33 +1302,21 @@
 
 
         // ========================================================
-        // Try Native Orientation
+        // Native Landscape
         // ========================================================
 
-        async function tryNativeRotate() {
-
-            /*
-                部分手機瀏覽器支援：
-
-                screen.orientation.lock()
-
-                但通常要求：
-
-                Fullscreen
-                +
-                User Gesture
-
-                所以這裡只是優先嘗試。
-
-                失敗就走 CSS Rotate。
-            */
+        async function tryLandscape() {
 
             try {
 
+                /*
+                    先嘗試 Fullscreen。
+                */
+
                 if (
+                    !document.fullscreenElement &&
                     document.documentElement
-                        .requestFullscreen &&
-                    !document.fullscreenElement
+                        .requestFullscreen
                 ) {
 
                     await document
@@ -1487,6 +1325,11 @@
 
                 }
 
+
+                /*
+                    Android Chrome 等瀏覽器
+                    可以真的鎖 Landscape。
+                */
 
                 if (
                     screen.orientation &&
@@ -1500,16 +1343,14 @@
                         );
 
 
-                    /*
-                        Native 已經旋轉，
-                        CSS 不需要再 Rotate。
-                    */
-
                     display.rotated =
                         false;
 
 
-                    resizeGame();
+                    setTimeout(
+                        resizeGame,
+                        150
+                    );
 
 
                     return true;
@@ -1523,11 +1364,8 @@
             ) {
 
                 console.log(
-
-                    "Native orientation unavailable. Using CSS rotation.",
-
+                    "Native rotate unavailable.",
                     error
-
                 );
 
             }
@@ -1539,20 +1377,18 @@
 
 
         // ========================================================
-        // Rotate Button
+        // Rotate
         // ========================================================
 
         rotateButton.addEventListener(
 
             "click",
 
-            async function () {
+            async () => {
 
                 /*
-                    手機 Portrait 狀態時，
-
-                    優先嘗試真的切成
-                    Landscape。
+                    如果目前是直式手機，
+                    先嘗試真正切成 Landscape。
                 */
 
                 if (
@@ -1560,12 +1396,12 @@
                     window.innerWidth
                 ) {
 
-                    const nativeSuccess =
-                        await tryNativeRotate();
+                    const success =
+                        await tryLandscape();
 
 
                     if (
-                        nativeSuccess
+                        success
                     ) {
 
                         return;
@@ -1576,9 +1412,8 @@
 
 
                 /*
-                    Native API 不可用：
-
-                    使用 CSS Rotate。
+                    Safari / 不支援 Orientation Lock
+                    時使用 CSS Rotate。
                 */
 
                 display.rotated =
@@ -1593,7 +1428,7 @@
 
 
         // ========================================================
-        // Resize
+        // Resize Events
         // ========================================================
 
         window.addEventListener(
@@ -1609,24 +1444,39 @@
 
             "orientationchange",
 
-            function () {
-
-                /*
-                    等裝置方向更新完
-                    再重新計算。
-                */
+            () => {
 
                 setTimeout(
-
                     resizeGame,
-
-                    100
-
+                    150
                 );
 
             }
 
         );
+
+
+        /*
+            iPhone Safari 很重要。
+
+            地址列 / 工具列縮放都會改變
+            visualViewport。
+        */
+
+        if (
+            window.visualViewport
+        ) {
+
+            window.visualViewport
+                .addEventListener(
+
+                    "resize",
+
+                    resizeGame
+
+                );
+
+        }
 
 
         // ========================================================
@@ -1635,9 +1485,7 @@
 
         resizeGame();
 
-
         loadAssets();
-
 
         requestAnimationFrame(
             gameLoop
