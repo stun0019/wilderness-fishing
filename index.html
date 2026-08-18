@@ -5,15 +5,22 @@
 
     <meta
         name="viewport"
-        content="width=device-width,
-                 initial-scale=1.0,
-                 maximum-scale=1.0,
-                 user-scalable=no"
+        content="
+            width=device-width,
+            initial-scale=1.0,
+            maximum-scale=1.0,
+            user-scalable=no
+        "
     >
 
     <title>Wilderness Fishing</title>
 
     <style>
+
+        /* ========================================================
+           Reset
+        ======================================================== */
+
         * {
             margin: 0;
             padding: 0;
@@ -25,21 +32,54 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
+
             background: #000;
         }
 
         body {
+            position: relative;
+
             display: flex;
             justify-content: center;
             align-items: center;
+
+            touch-action: none;
         }
+
+
+        /* ========================================================
+           Game Container
+        ======================================================== */
+
+        #gameContainer {
+            position: relative;
+
+            width: 1280px;
+            height: 720px;
+
+            transform-origin: center center;
+        }
+
+
+        /* ========================================================
+           Canvas
+        ======================================================== */
 
         #gameCanvas {
             display: block;
-            width: 1280px;
-            height: 720px;
+
+            width: 100%;
+            height: 100%;
+
             background: #000;
+
+            aspect-ratio: 16 / 9;
         }
+
+
+        /* ========================================================
+           Loading
+        ======================================================== */
 
         #loading {
             position: fixed;
@@ -47,22 +87,29 @@
             left: 50%;
             top: 50%;
 
-            transform: translate(-50%, -50%);
+            transform: translate(
+                -50%,
+                -50%
+            );
 
-            color: white;
+            color: #ffffff;
 
-            font-family: Arial, sans-serif;
+            font-family:
+                Arial,
+                sans-serif;
+
             font-size: 18px;
 
             pointer-events: none;
+
+            z-index: 100;
         }
 
-        /*
-            測試資訊。
 
-            正式版不想看到的話：
-            display: none;
-        */
+        /* ========================================================
+           Debug
+        ======================================================== */
+
         #debug {
             position: fixed;
 
@@ -71,131 +118,294 @@
 
             padding: 8px 12px;
 
-            background: rgba(0, 0, 0, 0.55);
+            color: #ffffff;
 
-            color: white;
+            background:
+                rgba(
+                    0,
+                    0,
+                    0,
+                    0.55
+                );
 
             border-radius: 5px;
 
-            font-family: monospace;
+            font-family:
+                monospace;
+
             font-size: 14px;
 
             line-height: 1.6;
 
             pointer-events: none;
             user-select: none;
+
+            z-index: 1000;
         }
+
+
+        /* ========================================================
+           Rotate Button
+        ======================================================== */
+
+        #rotateButton {
+            position: fixed;
+
+            top: 16px;
+            right: 16px;
+
+            min-width: 100px;
+
+            padding:
+                12px
+                18px;
+
+            border: none;
+
+            border-radius: 8px;
+
+            background:
+                rgba(
+                    0,
+                    0,
+                    0,
+                    0.7
+                );
+
+            color: #ffffff;
+
+            font-family:
+                Arial,
+                sans-serif;
+
+            font-size: 14px;
+            font-weight: bold;
+
+            letter-spacing: 1px;
+
+            cursor: pointer;
+
+            user-select: none;
+
+            z-index: 9999;
+
+            transition:
+                background 0.15s,
+                transform 0.15s;
+        }
+
+
+        #rotateButton:hover {
+            background:
+                rgba(
+                    30,
+                    30,
+                    30,
+                    0.9
+                );
+        }
+
+
+        #rotateButton:active {
+            transform:
+                scale(0.95);
+        }
+
     </style>
 </head>
 
+
 <body>
 
-    <canvas
-        id="gameCanvas"
-        width="1280"
-        height="720"
-    ></canvas>
+
+    <!-- ========================================================
+         Game
+    ======================================================== -->
+
+    <div id="gameContainer">
+
+        <canvas
+            id="gameCanvas"
+            width="1280"
+            height="720"
+        ></canvas>
+
+    </div>
+
+
+    <!-- ========================================================
+         Loading
+    ======================================================== -->
 
     <div id="loading">
         Loading...
     </div>
+
+
+    <!-- ========================================================
+         Debug
+    ======================================================== -->
 
     <div id="debug">
         Loading...
     </div>
 
 
+    <!-- ========================================================
+         Rotate
+    ======================================================== -->
+
+    <button
+        id="rotateButton"
+        type="button"
+    >
+        ROTATE
+    </button>
+
+
+
     <script>
 
-        // =========================================================
+        // ========================================================
         // Game Resolution
-        // =========================================================
+        // ========================================================
 
-        const GAME_WIDTH = 1280;
-        const GAME_HEIGHT = 720;
+        const GAME_WIDTH =
+            1280;
+
+        const GAME_HEIGHT =
+            720;
+
+        const GAME_ASPECT =
+            GAME_WIDTH /
+            GAME_HEIGHT;
 
 
-        // =========================================================
+        // ========================================================
         // Timeline
-        // =========================================================
+        // ========================================================
 
         /*
-            一輪完整流程：
+            0:00 ~ 2:00
 
-            0 ~ 120 秒
-            BG01 → BG02 滾動
+            BG01 往左移動
+            BG02 從右側進入。
 
-            120 ~ 240 秒
-            BG02 固定
 
-            240 秒
-            Fade Out
+            2:00 ~ 4:00
 
-            Fade 完成後：
-            回 BG01
-            Fade In
-            下一輪
+            BG02 固定。
+
+
+            4:00
+
+            Fade Out。
+
+
+            全黑後：
+
+            BG01 Reset。
+
+
+            Fade In。
+
+
+            下一輪。
         */
 
-        const SCROLL_DURATION = 120;
-        const HOLD_DURATION = 120;
+        const SCROLL_DURATION =
+            120;
 
-        /*
-            4 分鐘主流程。
-        */
+        const HOLD_DURATION =
+            120;
+
         const MAIN_DURATION =
+
             SCROLL_DURATION +
+
             HOLD_DURATION;
 
 
         /*
-            Fade Out / Fade In 時間。
+            Fade Out：
 
-            目前各 1.5 秒。
+            1.5 秒
 
-            想快一點：
-            0.5
 
-            想慢一點：
-            2.0
+            Fade In：
+
+            1.5 秒
         */
-        const FADE_DURATION = 1.5;
+
+        const FADE_DURATION =
+            1.5;
 
 
-        // =========================================================
-        // Canvas
-        // =========================================================
+        // ========================================================
+        // DOM
+        // ========================================================
+
+        const gameContainer =
+            document.getElementById(
+                "gameContainer"
+            );
+
 
         const canvas =
-            document.getElementById("gameCanvas");
+            document.getElementById(
+                "gameCanvas"
+            );
+
 
         const ctx =
-            canvas.getContext("2d");
+            canvas.getContext(
+                "2d"
+            );
+
 
         const loadingElement =
-            document.getElementById("loading");
+            document.getElementById(
+                "loading"
+            );
+
 
         const debugElement =
-            document.getElementById("debug");
+            document.getElementById(
+                "debug"
+            );
 
 
-        ctx.imageSmoothingEnabled = true;
+        const rotateButton =
+            document.getElementById(
+                "rotateButton"
+            );
 
 
-        // =========================================================
+        ctx.imageSmoothingEnabled =
+            true;
+
+
+        // ========================================================
         // Assets
-        // =========================================================
+        // ========================================================
 
-        const BG01 = new Image();
-        const BG02 = new Image();
+        const BG01 =
+            new Image();
 
-        BG01.src = "./assets/BG01.png";
-        BG02.src = "./assets/BG02.png";
+        const BG02 =
+            new Image();
 
 
-        // =========================================================
+        BG01.src =
+            "./assets/BG01.png";
+
+        BG02.src =
+            "./assets/BG02.png";
+
+
+        // ========================================================
         // Game State
-        // =========================================================
+        // ========================================================
 
         const game = {
 
@@ -203,78 +413,114 @@
 
             lastTimestamp: 0,
 
-            /*
-                目前一輪已經經過多少秒。
-            */
             elapsed: 0,
 
-            /*
-                狀態：
+            state:
+                "playing",
 
-                playing
-                fadeOut
-                fadeIn
-            */
-            state: "playing",
-
-            /*
-                黑幕透明度。
-
-                0 = 完全透明
-                1 = 全黑
-            */
             fadeAlpha: 0
 
         };
 
 
-        // =========================================================
+        // ========================================================
         // Scene
-        // =========================================================
+        // ========================================================
+
+        /*
+            scene.x = 0
+
+            BG01 完整顯示。
+
+
+            scene.x = -1280
+
+            BG02 完整顯示。
+        */
 
         const scene = {
 
-            /*
-                0：
-
-                BG01 完整顯示。
-
-
-                -1280：
-
-                BG02 完整顯示。
-            */
             x: 0
 
         };
 
 
-        // =========================================================
-        // Image Loader
-        // =========================================================
+        // ========================================================
+        // Display State
+        // ========================================================
 
-        function loadImage(image) {
+        const display = {
+
+            /*
+                false：
+
+                一般 16:9。
+
+
+                true：
+
+                CSS 旋轉 90 度。
+            */
+
+            rotated: false
+
+        };
+
+
+        // ========================================================
+        // Load Image
+        // ========================================================
+
+        function loadImage(
+            image
+        ) {
 
             return new Promise(
-                (resolve, reject) => {
+                (
+                    resolve,
+                    reject
+                ) => {
 
-                    image.onload = function () {
+                    if (
+                        image.complete &&
+                        image.naturalWidth > 0
+                    ) {
 
-                        resolve(image);
-
-                    };
-
-
-                    image.onerror = function () {
-
-                        reject(
-                            new Error(
-                                "Image load failed: " +
-                                image.src
-                            )
+                        resolve(
+                            image
                         );
 
-                    };
+                        return;
+
+                    }
+
+
+                    image.onload =
+                        function () {
+
+                            resolve(
+                                image
+                            );
+
+                        };
+
+
+                    image.onerror =
+                        function () {
+
+                            reject(
+
+                                new Error(
+
+                                    "Failed to load: " +
+
+                                    image.src
+
+                                )
+
+                            );
+
+                        };
 
                 }
             );
@@ -282,9 +528,9 @@
         }
 
 
-        // =========================================================
+        // ========================================================
         // Load Assets
-        // =========================================================
+        // ========================================================
 
         async function loadAssets() {
 
@@ -292,36 +538,56 @@
 
                 await Promise.all([
 
-                    loadImage(BG01),
-                    loadImage(BG02)
+                    loadImage(
+                        BG01
+                    ),
+
+                    loadImage(
+                        BG02
+                    )
 
                 ]);
 
 
-                game.ready = true;
+                game.ready =
+                    true;
+
 
                 loadingElement.style.display =
                     "none";
 
 
                 console.log(
+
                     "BG01:",
+
                     BG01.width,
+
                     BG01.height
+
                 );
 
 
                 console.log(
+
                     "BG02:",
+
                     BG02.width,
+
                     BG02.height
+
                 );
 
-
             }
-            catch (error) {
 
-                console.error(error);
+            catch (
+                error
+            ) {
+
+                console.error(
+                    error
+                );
+
 
                 loadingElement.textContent =
                     "Failed to load assets.";
@@ -331,9 +597,9 @@
         }
 
 
-        // =========================================================
+        // ========================================================
         // Clamp
-        // =========================================================
+        // ========================================================
 
         function clamp(
             value,
@@ -342,37 +608,51 @@
         ) {
 
             return Math.max(
+
                 min,
+
                 Math.min(
+
                     max,
+
                     value
+
                 )
+
             );
 
         }
 
 
-        // =========================================================
-        // Linear Interpolation
-        // =========================================================
+        // ========================================================
+        // Lerp
+        // ========================================================
 
         function lerp(
             start,
             end,
-            t
+            progress
         ) {
 
             return (
+
                 start +
-                (end - start) * t
+
+                (
+                    end -
+                    start
+                ) *
+
+                progress
+
             );
 
         }
 
 
-        // =========================================================
-        // Update Playing
-        // =========================================================
+        // ========================================================
+        // Playing
+        // ========================================================
 
         function updatePlaying(
             deltaTime
@@ -382,21 +662,13 @@
                 deltaTime;
 
 
-            // -----------------------------------------------------
+            // ----------------------------------------------------
             // Phase 1
             //
             // 0 ~ 120 秒
             //
-            // BG01 從：
-            //
-            // x = 0
-            //
-            // 移動到：
-            //
-            // x = -1280
-            //
-            // 正好花 2 分鐘。
-            // -----------------------------------------------------
+            // BG01 左移。
+            // ----------------------------------------------------
 
             if (
                 game.elapsed <
@@ -407,9 +679,11 @@
                     clamp(
 
                         game.elapsed /
+
                         SCROLL_DURATION,
 
                         0,
+
                         1
 
                     );
@@ -417,21 +691,25 @@
 
                 scene.x =
                     lerp(
+
                         0,
+
                         -GAME_WIDTH,
+
                         progress
+
                     );
 
             }
 
 
-            // -----------------------------------------------------
+            // ----------------------------------------------------
             // Phase 2
             //
             // 120 ~ 240 秒
             //
             // BG02 固定。
-            // -----------------------------------------------------
+            // ----------------------------------------------------
 
             else if (
                 game.elapsed <
@@ -444,11 +722,11 @@
             }
 
 
-            // -----------------------------------------------------
+            // ----------------------------------------------------
             // 4 分鐘結束
             //
-            // 開始 Fade Out。
-            // -----------------------------------------------------
+            // Fade Out
+            // ----------------------------------------------------
 
             else {
 
@@ -468,9 +746,9 @@
         }
 
 
-        // =========================================================
-        // Update Fade Out
-        // =========================================================
+        // ========================================================
+        // Fade Out
+        // ========================================================
 
         function updateFadeOut(
             deltaTime
@@ -479,31 +757,40 @@
             game.fadeAlpha +=
 
                 deltaTime /
+
                 FADE_DURATION;
 
 
             game.fadeAlpha =
                 clamp(
+
                     game.fadeAlpha,
+
                     0,
+
                     1
+
                 );
 
 
             /*
-                全黑後：
+                完全黑畫面。
 
-                在使用者看不到的狀態下，
-                把背景瞬間切回 BG01。
+                這時候把 Scene
+                偷偷 Reset 到 BG01。
             */
 
             if (
                 game.fadeAlpha >= 1
             ) {
 
-                scene.x = 0;
+                scene.x =
+                    0;
 
-                game.elapsed = 0;
+
+                game.elapsed =
+                    0;
+
 
                 game.state =
                     "fadeIn";
@@ -513,9 +800,9 @@
         }
 
 
-        // =========================================================
-        // Update Fade In
-        // =========================================================
+        // ========================================================
+        // Fade In
+        // ========================================================
 
         function updateFadeIn(
             deltaTime
@@ -524,28 +811,29 @@
             game.fadeAlpha -=
 
                 deltaTime /
+
                 FADE_DURATION;
 
 
             game.fadeAlpha =
                 clamp(
+
                     game.fadeAlpha,
+
                     0,
+
                     1
+
                 );
 
-
-            /*
-                完全顯示 BG01。
-
-                下一輪正式開始。
-            */
 
             if (
                 game.fadeAlpha <= 0
             ) {
 
-                game.fadeAlpha = 0;
+                game.fadeAlpha =
+                    0;
+
 
                 game.state =
                     "playing";
@@ -555,16 +843,20 @@
         }
 
 
-        // =========================================================
+        // ========================================================
         // Update
-        // =========================================================
+        // ========================================================
 
         function update(
             deltaTime
         ) {
 
-            if (!game.ready) {
+            if (
+                !game.ready
+            ) {
+
                 return;
+
             }
 
 
@@ -606,17 +898,14 @@
         }
 
 
-        // =========================================================
-        // Draw Background
-        // =========================================================
+        // ========================================================
+        // Background
+        // ========================================================
 
         function drawBackground() {
 
             /*
                 BG01
-
-                World X：
-                0 ~ 1280
             */
 
             ctx.drawImage(
@@ -635,10 +924,8 @@
             /*
                 BG02
 
-                World X：
-                1280 ~ 2560
-
-                永遠接在 BG01 後面。
+                永遠接在 BG01
+                右側。
             */
 
             ctx.drawImage(
@@ -658,9 +945,9 @@
         }
 
 
-        // =========================================================
-        // Fade Overlay
-        // =========================================================
+        // ========================================================
+        // Fade
+        // ========================================================
 
         function drawFade() {
 
@@ -700,9 +987,9 @@
         }
 
 
-        // =========================================================
+        // ========================================================
         // Render
-        // =========================================================
+        // ========================================================
 
         function render() {
 
@@ -717,10 +1004,12 @@
             );
 
 
-            if (!game.ready) {
+            if (
+                !game.ready
+            ) {
 
                 ctx.fillStyle =
-                    "#000000";
+                    "#000";
 
 
                 ctx.fillRect(
@@ -739,38 +1028,47 @@
             }
 
 
-            // -----------------------------------------------------
-            // World
-            // -----------------------------------------------------
+            // ----------------------------------------------------
+            // Background
+            // ----------------------------------------------------
 
             drawBackground();
 
 
-            // -----------------------------------------------------
-            // 未來 Player / UI
+            // ----------------------------------------------------
+            // Player
             //
-            // 要畫在這裡。
+            // 未來角色畫這裡。
             //
-            // Player 不使用 scene.x。
-            // -----------------------------------------------------
+            // 不要加 scene.x。
+            // ----------------------------------------------------
 
 
-            // -----------------------------------------------------
-            // Fade 必須最後畫
-            // -----------------------------------------------------
+            // ----------------------------------------------------
+            // UI
+            //
+            // 未來 UI 畫這裡。
+            // ----------------------------------------------------
+
+
+            // ----------------------------------------------------
+            // Fade
+            //
+            // 必須最後畫。
+            // ----------------------------------------------------
 
             drawFade();
 
         }
 
 
-        // =========================================================
+        // ========================================================
         // Debug
-        // =========================================================
+        // ========================================================
 
         function updateDebug() {
 
-            let phase = "";
+            let phase;
 
 
             if (
@@ -813,13 +1111,19 @@
 
             const minutes =
                 Math.floor(
-                    game.elapsed / 60
+
+                    game.elapsed /
+                    60
+
                 );
 
 
             const seconds =
                 Math.floor(
-                    game.elapsed % 60
+
+                    game.elapsed %
+                    60
+
                 );
 
 
@@ -833,26 +1137,42 @@
                 "Time: " +
                 minutes +
                 ":" +
-                String(seconds)
-                    .padStart(2, "0") +
+                String(
+                    seconds
+                ).padStart(
+                    2,
+                    "0"
+                ) +
 
                 "<br>" +
 
                 "Scene X: " +
-                Math.round(scene.x) +
+                Math.round(
+                    scene.x
+                ) +
 
                 "<br>" +
 
                 "Fade: " +
-                game.fadeAlpha
-                    .toFixed(2);
+                game.fadeAlpha.toFixed(
+                    2
+                ) +
+
+                "<br>" +
+
+                "Rotate: " +
+                (
+                    display.rotated
+                        ? "90°"
+                        : "0°"
+                );
 
         }
 
 
-        // =========================================================
+        // ========================================================
         // Game Loop
-        // =========================================================
+        // ========================================================
 
         function gameLoop(
             timestamp
@@ -873,6 +1193,7 @@
 
                 (
                     timestamp -
+
                     game.lastTimestamp
                 )
 
@@ -884,14 +1205,17 @@
 
 
             /*
-                防止切換瀏覽器分頁後，
-                回來瞬間跳過大量時間。
+                防止切 Tab 後
+                delta time 太大。
             */
 
             deltaTime =
                 Math.min(
+
                     deltaTime,
+
                     0.05
+
                 );
 
 
@@ -910,85 +1234,410 @@
         }
 
 
-        // =========================================================
-        // Responsive Canvas
-        // =========================================================
+        // ========================================================
+        // Resize Game
+        // ========================================================
 
         function resizeGame() {
 
             const screenWidth =
                 window.innerWidth;
 
+
             const screenHeight =
                 window.innerHeight;
 
 
-            const gameAspect =
-                GAME_WIDTH /
-                GAME_HEIGHT;
+            let availableWidth;
+            let availableHeight;
 
 
-            const screenAspect =
-                screenWidth /
-                screenHeight;
-
-
-            let width;
-            let height;
-
+            /*
+                ----------------------------------------------------
+                一般模式
+                ----------------------------------------------------
+            */
 
             if (
-                screenAspect >
-                gameAspect
+                !display.rotated
             ) {
 
-                height =
+                availableWidth =
+                    screenWidth;
+
+
+                availableHeight =
                     screenHeight;
 
-                width =
-                    height *
-                    gameAspect;
+
+                const screenAspect =
+
+                    availableWidth /
+
+                    availableHeight;
+
+
+                let width;
+                let height;
+
+
+                if (
+                    screenAspect >
+                    GAME_ASPECT
+                ) {
+
+                    /*
+                        Screen 比 16:9 寬。
+
+                        高度塞滿。
+                    */
+
+                    height =
+                        availableHeight;
+
+
+                    width =
+                        height *
+
+                        GAME_ASPECT;
+
+                }
+
+                else {
+
+                    /*
+                        Screen 比 16:9 窄。
+
+                        寬度塞滿。
+                    */
+
+                    width =
+                        availableWidth;
+
+
+                    height =
+                        width /
+
+                        GAME_ASPECT;
+
+                }
+
+
+                gameContainer.style.width =
+                    width +
+                    "px";
+
+
+                gameContainer.style.height =
+                    height +
+                    "px";
+
+
+                gameContainer.style.transform =
+                    "rotate(0deg)";
 
             }
+
+
+            /*
+                ----------------------------------------------------
+                Rotate 90°
+                ----------------------------------------------------
+            */
 
             else {
 
-                width =
-                    screenWidth;
+                /*
+                    旋轉後：
 
-                height =
-                    width /
-                    gameAspect;
+                    原本 Game Width
+                    會變成畫面 Height。
+
+                    原本 Game Height
+                    會變成畫面 Width。
+                */
+
+                const rotatedAspect =
+
+                    GAME_HEIGHT /
+
+                    GAME_WIDTH;
+
+
+                const screenAspect =
+
+                    screenWidth /
+
+                    screenHeight;
+
+
+                let finalDisplayWidth;
+                let finalDisplayHeight;
+
+
+                if (
+                    screenAspect >
+                    rotatedAspect
+                ) {
+
+                    /*
+                        Screen 相對較寬。
+
+                        用高度為基準。
+                    */
+
+                    finalDisplayHeight =
+                        screenHeight;
+
+
+                    finalDisplayWidth =
+
+                        finalDisplayHeight *
+
+                        rotatedAspect;
+
+                }
+
+                else {
+
+                    /*
+                        Screen 相對較窄。
+
+                        用寬度為基準。
+                    */
+
+                    finalDisplayWidth =
+                        screenWidth;
+
+
+                    finalDisplayHeight =
+
+                        finalDisplayWidth /
+
+                        rotatedAspect;
+
+                }
+
+
+                /*
+                    注意：
+
+                    Container 自己仍是
+                    16:9。
+
+                    只是 Rotate 90°。
+                */
+
+                gameContainer.style.width =
+
+                    finalDisplayHeight +
+
+                    "px";
+
+
+                gameContainer.style.height =
+
+                    finalDisplayWidth +
+
+                    "px";
+
+
+                gameContainer.style.transform =
+
+                    "rotate(90deg)";
 
             }
-
-
-            canvas.style.width =
-                width + "px";
-
-            canvas.style.height =
-                height + "px";
 
         }
 
 
-        // =========================================================
-        // Resize
-        // =========================================================
+        // ========================================================
+        // Try Native Orientation
+        // ========================================================
 
-        window.addEventListener(
-            "resize",
-            resizeGame
+        async function tryNativeRotate() {
+
+            /*
+                部分手機瀏覽器支援：
+
+                screen.orientation.lock()
+
+                但通常要求：
+
+                Fullscreen
+                +
+                User Gesture
+
+                所以這裡只是優先嘗試。
+
+                失敗就走 CSS Rotate。
+            */
+
+            try {
+
+                if (
+                    document.documentElement
+                        .requestFullscreen &&
+                    !document.fullscreenElement
+                ) {
+
+                    await document
+                        .documentElement
+                        .requestFullscreen();
+
+                }
+
+
+                if (
+                    screen.orientation &&
+                    screen.orientation.lock
+                ) {
+
+                    await screen
+                        .orientation
+                        .lock(
+                            "landscape"
+                        );
+
+
+                    /*
+                        Native 已經旋轉，
+                        CSS 不需要再 Rotate。
+                    */
+
+                    display.rotated =
+                        false;
+
+
+                    resizeGame();
+
+
+                    return true;
+
+                }
+
+            }
+
+            catch (
+                error
+            ) {
+
+                console.log(
+
+                    "Native orientation unavailable. Using CSS rotation.",
+
+                    error
+
+                );
+
+            }
+
+
+            return false;
+
+        }
+
+
+        // ========================================================
+        // Rotate Button
+        // ========================================================
+
+        rotateButton.addEventListener(
+
+            "click",
+
+            async function () {
+
+                /*
+                    手機 Portrait 狀態時，
+
+                    優先嘗試真的切成
+                    Landscape。
+                */
+
+                if (
+                    window.innerHeight >
+                    window.innerWidth
+                ) {
+
+                    const nativeSuccess =
+                        await tryNativeRotate();
+
+
+                    if (
+                        nativeSuccess
+                    ) {
+
+                        return;
+
+                    }
+
+                }
+
+
+                /*
+                    Native API 不可用：
+
+                    使用 CSS Rotate。
+                */
+
+                display.rotated =
+                    !display.rotated;
+
+
+                resizeGame();
+
+            }
+
         );
 
 
-        // =========================================================
+        // ========================================================
+        // Resize
+        // ========================================================
+
+        window.addEventListener(
+
+            "resize",
+
+            resizeGame
+
+        );
+
+
+        window.addEventListener(
+
+            "orientationchange",
+
+            function () {
+
+                /*
+                    等裝置方向更新完
+                    再重新計算。
+                */
+
+                setTimeout(
+
+                    resizeGame,
+
+                    100
+
+                );
+
+            }
+
+        );
+
+
+        // ========================================================
         // Start
-        // =========================================================
+        // ========================================================
 
         resizeGame();
 
+
         loadAssets();
+
 
         requestAnimationFrame(
             gameLoop
